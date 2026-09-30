@@ -1,0 +1,219 @@
+/* =========================================================================
+   Application layout
+   ========================================================================= */
+
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Header ------------------------------------------------------------- */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--pink-400);
+  border-bottom: var(--bd-thick) solid var(--black);
+}
+.header__bar {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 14px var(--gutter);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+.logo__mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  background: var(--lime-500);
+  border: var(--bd) solid var(--black);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  flex: none;
+}
+.logo__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 0.9;
+}
+.logo__title {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  text-transform: uppercase;
+}
+.logo__sub {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.75;
+}
+.header__nav {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+/* ---- Main content ------------------------------------------------------- */
+.main {
+  flex: 1;
+  max-width: var(--maxw);
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px var(--gutter) 60px;
+  position: relative;
+  z-index: 1;
+}
+
+.view-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.view-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  color: var(--ink);
+  line-height: 0.9;
+}
+.view-sub {
+  font-size: 0.95rem;
+  color: var(--ink);
+  max-width: 60ch;
+  margin-top: 8px;
+  font-weight: 500;
+}
+
+/* ---- Two-column split --------------------------------------------------- */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 940px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: var(--bd) solid var(--black);
+  flex-wrap: wrap;
+}
+.card-body {
+  padding: 18px;
+}
+.card-body--flush {
+  padding: 0;
+}
+
+/* ---- Toolbar ------------------------------------------------------------ */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.toolbar__spacer {
+  margin-left: auto;
+}
+
+/* ---- Footer ------------------------------------------------------------- */
+.footer {
+  border-top: var(--bd-thick) solid var(--black);
+  background: var(--pink-400);
+  padding: 26px var(--gutter);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+.footer__badge {
+  display: inline-block;
+  background: var(--ink);
+  color: var(--lime-500);
+  border-radius: var(--radius-pill);
+  padding: 6px 16px;
+  margin-bottom: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ---- Empty states ------------------------------------------------------- */
+.empty {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 48px 24px;
+  gap: 10px;
+  color: var(--text-dim);
+}
+.empty__title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--ink);
+  text-transform: uppercase;
+}
+
+.metrics-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.metric {
+  flex: 1;
+  min-width: 120px;
+  background: var(--surface-2);
+  border: var(--bd) solid var(--black);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+.metric__value {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  line-height: 1;
+  color: var(--ink);
+}
+.metric__label {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 6px;
+}

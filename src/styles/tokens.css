@@ -1,0 +1,93 @@
+/* =========================================================================
+   SQL Query Doctor — Solarized design tokens
+   Ethan Schoonover's Solarized palette on a warm base3 canvas, kept in the
+   neo-brutalist frame: chunky borders, hard offset shadows, condensed display
+   type. Blue is the brand strip; cyan is the primary action colour.
+   ========================================================================= */
+
+:root {
+  /* ---- Solarized base tones ------------------------------------------- */
+  --sol-base03: #002b36;
+  --sol-base02: #073642;
+  --sol-base01: #586e75;
+  --sol-base00: #657b83;
+  --sol-base0: #839496;
+  --sol-base1: #93a1a1;
+  --sol-base2: #eee8d5;
+  --sol-base3: #fdf6e3;
+
+  /* ---- Solarized accents ---------------------------------------------- */
+  --sol-yellow: #b58900;
+  --sol-orange: #cb4b16;
+  --sol-red: #dc322f;
+  --sol-magenta: #d33682;
+  --sol-violet: #6c71c4;
+  --sol-blue: #268bd2;
+  --sol-cyan: #2aa198;
+  --sol-green: #859900;
+
+  /* ---- Semantic brand + accent --------------------------------------- */
+  --brand: var(--sol-blue); /* brand strip / secondary accent */
+  --brand-strong: #1c6fb0;
+  --brand-tint: #d7e8f5;
+  --acc: var(--sol-cyan); /* primary action / highlight */
+  --acc-strong: #1f8a80;
+  --acc-tint: #cdece7;
+
+  --ink: #073642; /* primary text */
+  --black: #002b36; /* brutalist borders + hard shadows (solarized base03) */
+  --paper: #fffdf6; /* card surface */
+  --paper-2: #f7f1de; /* secondary card surface */
+  --white: #ffffff;
+
+  /* ---- Memphis secondary accents ------------------------------------- */
+  --grape: var(--sol-violet);
+  --teal: var(--sol-cyan);
+  --sky: #7cb3dd;
+  --coral: var(--sol-orange);
+  --violet: var(--sol-violet);
+
+  /* ---- Semantic (severity) ------------------------------------------- */
+  --sev-critical: var(--sol-red);
+  --sev-high: var(--sol-orange);
+  --sev-medium: var(--sol-yellow);
+  --sev-low: var(--sol-blue);
+  --ok: var(--sol-green);
+
+  /* ---- Surfaces ------------------------------------------------------- */
+  --bg: var(--sol-base3); /* page canvas */
+  --surface: var(--white);
+  --surface-2: var(--paper-2);
+  --text: var(--ink);
+  --text-dim: var(--sol-base00);
+  --border: var(--black);
+
+  /* ---- Legacy aliases (component CSS still references these names) ---- */
+  --pink-200: var(--brand-tint);
+  --pink-300: #aacce8;
+  --pink-400: var(--brand);
+  --pink-500: var(--brand-strong);
+  --pink-600: var(--brand-strong);
+  --lime-300: var(--acc-tint);
+  --lime-400: #4cbfb4;
+  --lime-500: var(--acc);
+
+  /* ---- Typography ----------------------------------------------------- */
+  --font-display: "Anton", "Arial Narrow", sans-serif;
+  --font-ui: "Space Grotesk", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* ---- Structure ------------------------------------------------------ */
+  --radius: 14px;
+  --radius-pill: 999px;
+  --radius-sm: 8px;
+
+  --bd: 3px;
+  --bd-thick: 4px;
+  --shadow: 5px 5px 0 0 var(--black);
+  --shadow-sm: 3px 3px 0 0 var(--black);
+  --shadow-lg: 8px 8px 0 0 var(--black);
+
+  --gutter: 16px;
+  --maxw: 1400px;
+}
