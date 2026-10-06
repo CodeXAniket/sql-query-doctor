@@ -26,11 +26,6 @@ export function App() {
 
         <AnalyzerView />
       </main>
-
-      <footer className="footer">
-        <div className="footer__badge">Since 2026 · Built for slow queries</div>
-        <div>SQL Query Doctor — 19 anti-pattern rules · 4 dialects · instant, explained fixes</div>
-      </footer>
     </div>
   );
 }
