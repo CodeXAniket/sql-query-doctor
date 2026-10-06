@@ -25,7 +25,6 @@ export default defineConfig({
           if (id.includes("node_modules")) {
             if (id.includes("node-sql-parser")) return "vendor-sqlparser";
             if (/[\\/](@codemirror|@uiw|@lezer|codemirror)[\\/]/.test(id)) return "vendor-editor";
-            if (/[\\/]d3-/.test(id)) return "vendor-d3";
             if (/[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return "vendor-react";
           }
           return undefined;

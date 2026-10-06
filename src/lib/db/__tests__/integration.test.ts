@@ -4,12 +4,11 @@ import { seedDatabase, DATASET } from "../schema";
 import { createSuggestedIndexes, dropSuggestedIndexes, SUGGESTED_INDEXES } from "../indexes";
 import { BENCHMARK_QUERIES } from "../../benchmark/queries";
 import { runBenchmark } from "../../benchmark/runner";
-import { parsePlan } from "../../plan/parse";
 
 /**
  * Real PGlite integration. Uses a small dataset so the suite stays fast while
- * still exercising the actual seed SQL, index DDL, every benchmark query, and
- * the EXPLAIN → plan-model pipeline end to end.
+ * still exercising the actual seed SQL, index DDL, and every benchmark query
+ * end to end.
  */
 describe("PGlite integration (small dataset)", () => {
   let db: PgliteExecutor;
@@ -54,13 +53,6 @@ describe("PGlite integration (small dataset)", () => {
     const afterNames = after.rows.map((r) => String(r.indexname));
     expect(afterNames).not.toContain("idx_orders_user_id");
   }, 60_000);
-
-  it("produces an EXPLAIN JSON plan that the parser understands", async () => {
-    const json = await db.explainJson("SELECT * FROM orders WHERE user_id = 5", false);
-    const plan = parsePlan(json, "postgresql");
-    expect(plan.root.operation).toBeTruthy();
-    expect(plan.engine).toBe("postgresql");
-  });
 
   it("shows a measurable benefit from indexing in a full benchmark run", async () => {
     const report = await runBenchmark(db, { repeats: 1, queries: BENCHMARK_QUERIES.slice(0, 8) });

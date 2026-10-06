@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { PgliteExecutor } from "../../lib/db/client";
 import { seedDatabase, DATASET } from "../../lib/db/schema";
-import type { QueryResult } from "../../lib/db/types";
 
 export type DbStatus = "idle" | "booting" | "seeding" | "ready" | "error";
 
@@ -40,17 +39,7 @@ export function useDatabase() {
     }
   }, []);
 
-  const runQuery = useCallback(async (sql: string): Promise<QueryResult> => {
-    if (!dbRef.current) throw new Error("Database not ready");
-    return dbRef.current.run(sql);
-  }, []);
-
-  const explain = useCallback(async (sql: string, analyze: boolean): Promise<string> => {
-    if (!dbRef.current) throw new Error("Database not ready");
-    return dbRef.current.explainJson(sql, analyze);
-  }, []);
-
   const getDb = useCallback(() => dbRef.current, []);
 
-  return { status, progress, error, rowCounts, init, runQuery, explain, getDb };
+  return { status, progress, error, rowCounts, init, getDb };
 }

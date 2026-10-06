@@ -2,19 +2,15 @@ import { lazy, Suspense, useState } from "react";
 import { Bolt, Star, Blob } from "./components/Decor";
 import { AnalyzerView } from "./features/analyzer/AnalyzerView";
 
-const PlanView = lazy(() =>
-  import("./features/plan/PlanView").then((m) => ({ default: m.PlanView })),
-);
-const PlaygroundView = lazy(() =>
-  import("./features/playground/PlaygroundView").then((m) => ({ default: m.PlaygroundView })),
+const BenchmarkView = lazy(() =>
+  import("./features/benchmark/BenchmarkView").then((m) => ({ default: m.BenchmarkView })),
 );
 
-type Tab = "analyzer" | "plan" | "playground";
+type Tab = "analyzer" | "benchmark";
 
 const TABS: { id: Tab; label: string; index: string }[] = [
   { id: "analyzer", label: "Analyzer", index: "01" },
-  { id: "plan", label: "Plan Tree", index: "02" },
-  { id: "playground", label: "Playground", index: "03" },
+  { id: "benchmark", label: "Benchmark", index: "02" },
 ];
 
 export function App() {
@@ -58,15 +54,14 @@ export function App() {
 
         <Suspense fallback={<div className="empty"><div className="empty__title">Loading…</div></div>}>
           {tab === "analyzer" && <AnalyzerView />}
-          {tab === "plan" && <PlanView />}
-          {tab === "playground" && <PlaygroundView />}
+          {tab === "benchmark" && <BenchmarkView />}
         </Suspense>
       </main>
 
       <footer className="footer">
         <div className="footer__badge">Since 2026 · Built for slow queries</div>
         <div>
-          SQL Query Doctor — 19 anti-pattern rules · 4 dialects · unified plan tree · in-browser
+          SQL Query Doctor — 19 anti-pattern rules · 4 dialects · live index benchmark on in-browser
           Postgres (PGlite / WASM)
         </div>
       </footer>

@@ -3,8 +3,7 @@ import type { QueryExecutor, QueryResult } from "./types";
 
 /**
  * PGlite-backed executor: a full PostgreSQL running in WebAssembly, in the
- * browser tab. Implements the QueryExecutor interface used by the benchmark and
- * playground, and adds EXPLAIN helpers for the plan visualizer.
+ * browser tab. Implements the QueryExecutor interface used by the benchmark.
  */
 export class PgliteExecutor implements QueryExecutor {
   private constructor(private readonly db: PGlite) {}
@@ -26,15 +25,6 @@ export class PgliteExecutor implements QueryExecutor {
 
   async exec(sql: string): Promise<void> {
     await this.db.exec(sql);
-  }
-
-  /** Return EXPLAIN (FORMAT JSON[, ANALYZE]) output as a JSON string. */
-  async explainJson(sql: string, analyze: boolean): Promise<string> {
-    const opts = analyze ? "ANALYZE, FORMAT JSON, BUFFERS OFF" : "FORMAT JSON";
-    const res = await this.db.query(`EXPLAIN (${opts}) ${sql}`);
-    const row = res.rows[0] as Record<string, unknown>;
-    const plan = row["QUERY PLAN"];
-    return JSON.stringify(plan);
   }
 
   /** Convenience: does a table exist? Used to decide whether to seed. */
