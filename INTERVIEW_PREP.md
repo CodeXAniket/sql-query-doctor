@@ -4,9 +4,9 @@
 > before an interview. Everything here reflects what is actually in the codebase — if you can
 > explain this document, you can defend the project.
 
-**What the project is, in one line:** a browser-based tool that (1) **checks** a SQL query for
-performance anti-patterns and tells you how to fix them, and (2) **benchmarks** the real speed-up of
-indexes on a 500K-row PostgreSQL running inside the browser — all with **no backend**.
+**What the project is, in one line:** a browser-based tool that **checks a SQL query for performance
+anti-patterns** across four dialects and, for each issue, tells you *why it's slow* and *how to fix
+it* — with **no backend**.
 
 ---
 
@@ -14,20 +14,19 @@ indexes on a 500K-row PostgreSQL running inside the browser — all with **no ba
 
 1. [The 30-second and 2-minute pitch](#1-the-30-second-and-2-minute-pitch)
 2. [USP, differentiation & extra features (the "informal" stuff)](#2-usp-differentiation--extra-features)
-3. [System design & architecture (with diagrams)](#3-system-design--architecture)
+3. [System design & architecture (with diagram)](#3-system-design--architecture)
 4. [Tech stack deep dive — what, why, why-not, key concepts, likely Q&A](#4-tech-stack-deep-dive)
    - [TypeScript](#41-typescript)
    - [React 18](#42-react-18)
    - [Vite](#43-vite)
    - [Vitest + Testing Library](#44-vitest--testing-library)
-   - [PGlite + PostgreSQL + WebAssembly](#45-pglite--postgresql--webassembly)
-   - [node-sql-parser](#46-node-sql-parser)
-   - [CodeMirror 6](#47-codemirror-6)
-   - [Supporting libraries (Fontsource, CSS tokens)](#48-supporting-libraries)
+   - [node-sql-parser](#45-node-sql-parser)
+   - [CodeMirror 6](#46-codemirror-6)
+   - [Supporting libraries (Fontsource, CSS tokens)](#47-supporting-libraries)
 5. [The SQL domain — the heart of the project](#5-the-sql-domain)
    - [Sargability & indexes](#51-sargability--indexes-the-single-most-important-concept)
    - [The 19 anti-pattern rules](#52-the-19-anti-pattern-rules-with-examples)
-   - [EXPLAIN, ANALYZE & the benchmark methodology](#53-explain-analyze--the-benchmark-methodology)
+   - [How the detection actually works (masking)](#53-how-the-detection-actually-works)
 6. [File-by-file map — what each file does & how they link](#6-file-by-file-map)
 7. [Rapid-fire interview Q&A](#7-rapid-fire-interview-qa)
 8. [Known limitations & "what I'd do next" (senior signal)](#8-known-limitations--what-id-do-next)
@@ -37,51 +36,51 @@ indexes on a 500K-row PostgreSQL running inside the browser — all with **no ba
 ## 1. The 30-second and 2-minute pitch
 
 **30-second version:**
-> "SQL Query Doctor is a browser-based SQL performance tool. It does two things: it lints SQL for
-> performance anti-patterns across four dialects — each finding comes with *why it's slow* and *how
-> to fix it* — and it runs a *real* PostgreSQL inside the browser via WebAssembly, so you can seed
-> half a million rows and measure what indexes actually do. It's 100% client-side — no backend — and
-> it has 120 tests."
+> "SQL Query Doctor is a browser-based SQL linter focused on *performance*. You paste a query, pick
+> a dialect, and it flags performance anti-patterns — leading-wildcard LIKEs, non-sargable functions,
+> N+1 subqueries, accidental cross joins, and so on — and for each one it explains *why* it's slow
+> and *how* to fix it. It supports four SQL dialects, runs entirely in the browser with no backend,
+> and has 94 tests."
 
 **2-minute version — problem → solution → proof:**
-- **Problem:** Developers write slow SQL and don't find out until production, and they rarely *prove*
-  that a fix (like adding an index) actually helps — they guess.
-- **Solution:** One tool that (a) catches the common mistakes statically, before you even run the
-  query, and explains each one, and (b) lets you *measure* the fix on realistic data without
-  installing or hosting anything.
-- **Proof / the hard part:** Running a real database in the browser (PGlite compiles PostgreSQL to
-  WebAssembly), a resilient linter that works even on SQL that doesn't fully parse, and a benchmark
-  harness that produces honest, measured before/after numbers.
+- **Problem:** Developers write slow SQL and don't find out until production. Regular linters check
+  *style/syntax*; very few check *performance*, and the knowledge of *why* something is slow lives in
+  senior engineers' heads.
+- **Solution:** A linter dedicated to performance anti-patterns that doesn't just flag — it *teaches*,
+  pairing every finding with the reason it's slow and a concrete fix. Four dialects, instant feedback
+  as you type.
+- **Proof / the hard part:** Making the detection robust — it works even on SQL that doesn't fully
+  parse, and it never false-fires on keywords that appear inside string literals or comments (via a
+  length-preserving "masking" pass). That robustness is the real engineering.
 
 ---
 
 ## 2. USP, differentiation & extra features
 
 ### What's the USP (unique selling proposition)?
-1. **A real database in the browser, zero backend.** Most "SQL playgrounds" either hit a shared
-   server or fake results with a tiny JS engine. This runs *actual PostgreSQL* (via PGlite / WASM) on
-   a 500K-row dataset, entirely on the client. The benchmark numbers are **measured live**, not
-   hard-coded.
-2. **It proves the fix, not just suggests it.** The analyzer tells you *what* to change; the
-   benchmark *measures* the payoff (add indexes → median query time drops). Suggestion + evidence.
-3. **Explanations, not just flags.** Every lint finding ships with *why it's slow* and *how to fix
-   it*, so it teaches, it doesn't just scold.
+1. **Performance-focused, and it explains itself.** Most SQL linters check formatting/syntax. This
+   one targets *performance* anti-patterns, and every finding ships with *why it's slow* + *how to
+   fix it* — it teaches, it doesn't just scold.
+2. **Four dialects, one tool.** PostgreSQL, MySQL, SQL Server (T-SQL), and SQLite — normally four
+   different ecosystems — are handled in one place.
+3. **Robust by design.** It lints SQL that doesn't fully parse, and its scanner is string/comment
+   aware so it never trips on keywords inside literals. That resilience is the differentiator vs a
+   naive regex linter.
 
 ### How is it different from a typical student project?
-- It's **not a CRUD app.** No "to-do list + REST API." The complexity is in *algorithms and data*
-  (parsing heuristics, string/comment masking, a benchmark harness, real SQL semantics) — harder to
-  fake, better to talk about.
-- It's **genuinely tested** (120 tests), including a real-PGlite integration test, not just a couple
-  of render tests.
+- It's **not a CRUD app.** No "to-do list + REST API." The complexity is *algorithmic* — a rules
+  engine, a string/comment masking pass, exact source-position tracking.
+- It's **genuinely tested** (94 tests, a positive *and* a negative case per rule) — false positives
+  are as bad as misses in a linter, and the tests enforce both.
 - It has a **deliberate design system** (neo-brutalist frame + Solarized palette driven entirely by
   CSS custom properties).
 
 ### Extra features worth mentioning
-- **Row-count & live progress** while seeding 500K rows in WASM.
-- **Composite-index suggestions, keyset-pagination guidance, NULL-safety warnings** — details that
-  signal you understand *production* SQL, not just syntax.
-- **Privacy/offline by design**: no server means nothing you type leaves your machine; it even works
-  offline after first load.
+- **Live analysis** as you type (memoized so it only re-runs on change).
+- **Severity model** (critical / high / medium / low) with filtering, plus a browsable **rule
+  catalog**.
+- **Exact source locations** (line:col) for every finding, computed from character offsets.
+- **Privacy/offline by design**: no backend — nothing you type leaves the browser.
 
 ---
 
@@ -89,107 +88,90 @@ indexes on a 500K-row PostgreSQL running inside the browser — all with **no ba
 
 ### 3.1 The big picture
 
-This is a **client-only Single Page Application (SPA)**. There is no server, no database host, no
-API. Everything — including the PostgreSQL engine — runs in the user's browser tab.
+This is a **client-only Single Page Application (SPA)** — no server, no API. Everything runs in the
+browser tab.
 
 ```mermaid
 flowchart TB
     subgraph Browser["Browser tab (the only runtime)"]
         subgraph UI["React UI layer (src/features, src/components)"]
-            A["Analyzer view (checks SQL)"]
-            B["Benchmark view (measures index speed-up)"]
+            A["Analyzer view"]
+            CM["CodeMirror editor"]
+            FC["Finding cards (why / how-to-fix)"]
         end
         subgraph LIB["Framework-agnostic core (src/lib) — no React, fully unit-tested"]
-            AN["analyzer/ (19 rules + scanner)"]
-            PA["parser/ (node-sql-parser wrapper)"]
-            DB["db/ (PGlite client, schema, indexes)"]
-            BM["benchmark/ (30 queries + stats runner)"]
-        end
-        subgraph VENDOR["Vendored engines (WASM / libs)"]
-            PG["PGlite = PostgreSQL compiled to WebAssembly"]
-            CM["CodeMirror 6 editor"]
+            CTX["context.ts — mask strings/comments, track positions"]
+            SCAN["scan.ts — WHERE/ON-aware scanning"]
+            RULES["rules/ — 19 anti-pattern rules"]
+            RUN["analyze.ts — run rules, sort, dedupe"]
+            PARSE["parser/ — node-sql-parser wrapper"]
         end
     end
 
-    A --> AN --> PA
     A --> CM
-    B --> DB --> PG
-    B --> BM --> DB
+    A --> RUN
+    RUN --> CTX --> PARSE
+    RUN --> RULES --> SCAN
+    RUN --> FC
 ```
 
 ### 3.2 The key architectural decision: `lib/` vs `features/`
-
-The single most important design choice, and the one most worth explaining:
 
 > **All the real logic lives in `src/lib/`, which has zero React imports. The React layer in
 > `src/features/` is a thin "view" over it.**
 
 **Why this matters (say this in an interview):**
 - **Testability**: pure functions with no DOM/React can be unit-tested fast and deterministically.
-  That's why there are 120 tests — the hard logic is trivially testable.
-- **Separation of concerns**: the analyzer doesn't know it's in a browser; it could run in Node, a
-  CLI, a CI hook, or a VS Code extension unchanged.
+  That's why there are 94 tests — the hard logic is trivially testable.
+- **Separation of concerns**: the analyzer doesn't know it's in a browser; `analyzeSql(sql, dialect)`
+  could run in Node, a CLI, a CI pre-commit hook, or a VS Code extension unchanged.
 - **Replaceable UI**: I could swap React for Svelte and `src/lib` wouldn't change a line.
 
-This is the classic **"functional core, imperative shell"** pattern (a.k.a. hexagonal / ports-and-
-adapters). The `QueryExecutor` interface in `db/types.ts` is a literal *port*: the benchmark depends
-on the interface, and either real PGlite (`db/client.ts`) or a mock in tests can be plugged in.
+This is the classic **"functional core, imperative shell"** pattern. The core is pure
+(string in → findings out); the shell (React) just renders.
 
-### 3.3 Data-flow per feature
+### 3.3 Data-flow
 
-**Analyzer:**
 ```
-SQL text ─▶ buildContext() ─▶ { raw, masked, codeMask, ast }
-                                    │
-          run all 19 rules ◀────────┘   each rule.detect(ctx) → Detection[]
-                │
-          resolve positions + merge rule metadata + sort + dedupe
-                │
-          AnalysisResult { findings[], counts, parseError } ─▶ React cards
+SQL text ─▶ buildContext(sql, dialect)
+                 │   produces { raw, masked, codeMask, lower, ast?, parseError? }
+                 ▼
+          for each of 19 rules: rule.detect(ctx) → Detection[]  (index, length, message…)
+                 │
+          analyze.ts: resolve each Detection's line/col, merge rule metadata
+                      (title, severity, explanation, fix), sort by position, dedupe
+                 ▼
+          AnalysisResult { findings[], counts, parseError } ─▶ React finding cards
 ```
 
-**Benchmark:**
-```
-"Initialize" ─▶ PGlite.create() (boot WASM Postgres) ─▶ seedDatabase() (generate_series, 500K rows)
-"Run benchmark" ─▶ runBenchmark(db):
-       drop indexes ─▶ time 30 queries (best of 3)   ← "before"
-       create 8 indexes + ANALYZE
-       time 30 queries again                          ← "after"
-       ─▶ median before / median after / median speed-up ─▶ bars
-```
+The whole pipeline is **synchronous and pure**, which is why it can run live on every keystroke
+(wrapped in `useMemo` so it only recomputes when the SQL or dialect changes).
 
 ### 3.4 System-design questions you might get
 
-**Q: Why client-side only? What are the trade-offs?**
-- **Pros:** zero infra cost, instant scaling (every user brings their own CPU), privacy (data never
-  leaves the browser), works offline, trivial deployment (static files on a CDN).
-- **Cons:** large first-load payload (the WASM Postgres is ~8 MB, ~3 MB gzipped), limited by the
-  user's machine, single-threaded WASM so big workloads are slower than a server. For this tool those
-  cons are acceptable — it's a developer utility, not a multi-tenant product.
+**Q: Why client-side only? Trade-offs?**
+- **Pros:** zero infra cost, privacy (nothing leaves the browser), works offline, trivial deployment
+  (static files on any CDN), scales for free (compute is the user's).
+- **Cons:** logic ships to the client (fine — it's not secret), and heavy parsing happens on the
+  user's machine (negligible for single queries). For a linter, client-side is strictly better.
 
-**Q: How do you keep the initial load fast given the huge WASM payload?**
-- **Code-splitting**: the Benchmark view (which pulls PGlite) is `React.lazy`-loaded, so the ~8 MB
-  WASM only downloads when a user opens that tab — the Analyzer (the default/first page) never pays
-  for it.
-- **Manual vendor chunks** (`vite.config.ts` → `manualChunks`) split React, CodeMirror, and the SQL
-  parser so they cache independently.
-- Assets are content-hashed → immutable, long-lived CDN caching.
+**Q: How do you keep it fast / responsive while linting on every keystroke?**
+- The analysis is pure and cheap, and it's wrapped in `useMemo(() => analyzeSql(sql, dialect),
+  [sql, dialect])` so it only recomputes when inputs change, not on every render. If it ever got
+  heavy I'd debounce input or move analysis to a Web Worker.
+
+**Q: How do you keep the bundle reasonable?**
+- `manualChunks` splits the big vendors (`node-sql-parser`, CodeMirror, React) so they cache
+  independently; assets are content-hashed for long-lived CDN caching; tree-shaking drops unused
+  exports.
 
 **Q: Security?**
-- No backend means no server to attack and no secrets to leak. The user's SQL runs against *their
-  own* in-browser database that only they can see. (I render user SQL as text, never as HTML, so
-  there's no XSS surface either.)
+- No backend → no server to attack, no secrets. User SQL is rendered as **text**, never HTML, so
+  there's no XSS surface.
 
-**Q: How is state managed?**
-- Deliberately simple: React local state (`useState`) + `useMemo` for derived data. No Redux/Zustand
-  because there's no cross-cutting global state worth the complexity — each tab owns its state, and
-  the one stateful resource (the PGlite instance) is held in a `useRef` inside a custom hook
-  (`useDatabase`). **Knowing when *not* to add a state library is a senior signal.**
-
-**Q: How would you scale this into a product?**
-- Compute is already on the client, so it "scales" for free. For team features (saved queries,
-  sharing) I'd add a thin *stateless* API + managed Postgres, and reuse the analyzer logic on the
-  server — it's already framework-agnostic.
+**Q: State management?**
+- React local state (`useState`) + `useMemo`. No Redux/Zustand — there's no cross-cutting global
+  state worth the complexity. **Knowing when *not* to add a state library is a senior signal.**
 
 ---
 
@@ -200,27 +182,24 @@ For each technology: **what it is → why I chose it → why not the alternative
 
 ### 4.1 TypeScript
 
-**What it is:** A superset of JavaScript that adds *static types*, checked at compile time and
-erased at runtime (it compiles to plain JS). It catches type errors before the code runs.
+**What it is:** A superset of JavaScript that adds *static types*, checked at compile time and erased
+at runtime (it compiles to plain JS). It catches type errors before the code runs.
 
-**Why I chose it:** The project is data-heavy — AST shapes, finding objects, benchmark results. Types
-act as live documentation and caught dozens of mistakes during development. For a rules engine with a
-shared `Rule`/`Finding` contract, types are the difference between "it compiles" and "a rule silently
-returns the wrong shape."
+**Why I chose it:** The core is a rules engine with shared contracts — `Rule`, `Finding`,
+`Detection`, `SqlContext`. Types make those contracts explicit and caught many mistakes (e.g. a rule
+returning the wrong shape) at compile time.
 
-**Why not plain JavaScript:** No compile-time safety; refactors become dangerous; the
-`Rule`/`Finding`/`QueryExecutor` contracts would only live in my head.
+**Why not plain JavaScript:** No compile-time safety; refactors become dangerous; the contracts would
+only live in my head.
 
 **Key concepts / branches to know:**
 - **Types vs interfaces** — `interface` for object shapes (`Rule`, `Finding`), `type` for unions
-  (`type Dialect = "postgresql" | "mysql" | ...`).
+  (`type Dialect = "postgresql" | "mysql" | "transactsql" | "sqlite"`, `type Severity`).
 - **Union & literal types** — `Severity`, `Category`, `Dialect` are string-literal unions; they make
   illegal states unrepresentable.
-- **Generics** — e.g. the `QueryExecutor` result types, `percentile(values: number[])` helpers.
+- **Generics** — e.g. helper functions and typed records (`Record<Severity, number>` for counts).
 - **`strict` mode** — `tsconfig` has `strict`, `noUnusedLocals`, `noUnusedParameters`,
   `noFallthroughCasesInSwitch`.
-- **Structural typing** — the `QueryExecutor` *mock* in tests satisfies the interface by shape, no
-  `implements` needed.
 - **`satisfies` operator** — used in `analyze.ts` to type-check a value without widening it.
 - **Type erasure** — types vanish at runtime; you can't `instanceof` an interface.
 - **`unknown` vs `any`** — the parser wrapper takes `unknown` AST and narrows it safely.
@@ -239,62 +218,57 @@ returns the wrong shape."
 virtual DOM and updates only what changed.
 
 **Why I chose it:** The UI is interactive and state-driven (live linting as you type, expandable
-cards, tab switching, an async DB lifecycle with progress). React's hooks fit that, and the ecosystem
-(the CodeMirror React wrapper) is mature.
+cards, dialect switching, severity filters). React's hooks fit that, and the CodeMirror React wrapper
+is mature.
 
 **Why not vanilla JS/jQuery:** Manual DOM updates for live-updating findings would be error-prone.
-**Why not Angular:** heavier, overkill for a 2-view app. **Why not Svelte/Vue:** fine, but React has
-the deepest ecosystem and is the most common interview expectation; the core `lib/` is
-framework-agnostic anyway.
+**Why not Angular:** heavier, overkill. **Why not Svelte/Vue:** fine, but React has the deepest
+ecosystem and is the most common interview expectation; the core `lib/` is framework-agnostic anyway.
 
 **Key concepts / branches (hooks I actually use):**
-- **`useState`** — local state (current SQL, dialect, dataset size, benchmark report).
+- **`useState`** — local state (current SQL, dialect, severity filter, which cards are expanded).
 - **`useMemo`** — memoizes derived data: `const result = useMemo(() => analyzeSql(sql, dialect),
   [sql, dialect])` re-lints only when the input changes.
-- **`useRef`** — holds the PGlite instance across renders *without* triggering re-renders.
-- **`useCallback`** — stable function identities in the `useDatabase` hook.
-- **`React.lazy` + `Suspense`** — code-split the Benchmark view so PGlite loads on demand.
+- **Controlled components** — the editor and selects are controlled (value + onChange).
+- **Lists & `key`** — findings are rendered from an array with stable keys.
+- **Conditional rendering** — empty state vs findings list vs "all clear."
 - **`StrictMode`** — dev-only double-invocation to surface impure effects.
-- **Controlled components** — the editor/selects are controlled (value + onChange).
-- **Lists & `key`** — findings/benchmark rows rendered from arrays with stable keys.
-- **Custom hooks** — `useDatabase()` encapsulates the whole PGlite lifecycle behind a clean API.
+- **Component composition** — reusable primitives (`Button`, `Badge`, `Card`) compose the views.
 
 **Likely questions:**
 - *Virtual DOM / reconciliation?* An in-memory tree React diffs to compute minimal real-DOM updates.
 - *Why `key`s?* Stable identity across renders; avoid array indices for reorderable lists.
-- *`useMemo` vs `useCallback`?* Memoize a *value* vs a *function* (`useCallback(fn) = useMemo(() =>
-  fn)`).
-- *Why `useRef` for the DB, not `useState`?* Mutating a ref doesn't re-render; the DB is a resource
-  handle, not UI state.
+- *`useMemo` vs `useCallback`?* Memoize a *value* vs a *function*.
+- *When does a component re-render?* When its state/props change, or its parent re-renders.
+- *Why memoize the analysis?* So typing (which re-renders) doesn't redundantly re-lint when the SQL
+  hasn't changed.
 
 ### 4.3 Vite
 
 **What it is:** A modern build tool + dev server. Dev serves source over native ES modules with
 instant HMR; production bundles with Rollup.
 
-**Why I chose it:** Near-instant dev startup/HMR, first-class TS/React, easy WASM handling, and simple
-config for the two things this project needs — excluding PGlite from pre-bundling and splitting
-vendor chunks.
+**Why I chose it:** Near-instant dev startup/HMR, first-class TS/React support, and simple config for
+vendor chunk splitting.
 
 **Why not Create React App:** deprecated, slow (Webpack). **Why not raw Webpack:** far more config.
-**Why not Parcel:** fine, but Vite is the current standard with better WASM/ESM ergonomics.
+**Why not Parcel:** fine, but Vite is the current standard.
 
 **Key concepts / branches:**
 - **Dev vs build**: dev uses **esbuild** (Go, very fast) + native ESM; build uses **Rollup**
   (tree-shaken, code-split, minified).
-- **HMR (Hot Module Replacement)**: swaps changed modules without a full reload. (Gotcha I hit and
-  documented: HMR can remount a view mid-benchmark — don't edit source while one runs.)
-- **`optimizeDeps.exclude: ['@electric-sql/pglite']`**: PGlite ships `.wasm`/`.data` assets that must
-  *not* be pre-bundled or the asset URLs break.
+- **HMR (Hot Module Replacement)**: swaps changed modules without a full reload.
 - **`manualChunks`**: splits `vendor-react`, `vendor-editor`, `vendor-sqlparser` so app-code changes
   don't bust big vendor caches.
 - **Content hashing**: output filenames include a hash → safe long-term caching.
 - **Tree-shaking**: unused exports dropped.
+- **Path alias**: `@` → `src` configured in both Vite and Vitest.
 
 **Likely questions:**
 - *Why is Vite's dev server fast?* Native ESM (no bundling in dev) + esbuild transforms.
 - *Dev vs prod difference?* Dev = unbundled ESM; prod = Rollup bundle, minified, split, hashed.
-- *What is code-splitting and why?* Load chunks on demand → smaller initial download.
+- *What is code-splitting and why?* Load chunks on demand / cache vendors separately → smaller,
+  cacheable downloads.
 
 ### 4.4 Vitest + Testing Library
 
@@ -307,70 +281,27 @@ fast. The API mirrors Jest, so the knowledge transfers.
 **Why not Jest:** needs separate Babel/TS config, slower start, doesn't share Vite's resolution.
 
 **Key concepts / branches:**
-- **Unit vs integration**: most tests are pure unit tests on `src/lib`; `db/__tests__/
-  integration.test.ts` is a real integration test — it boots actual PGlite and exercises seeding,
-  indexing, and every benchmark query on a *small* dataset.
-- **Test doubles / mocks**: `benchmark/__tests__/runner.test.ts` uses a `MockExecutor` implementing
-  the `QueryExecutor` interface, so I can test the benchmark *orchestration* (drop → measure → index →
-  measure) deterministically, without a real DB. This is the payoff of the port/adapter design.
-- **Arrange–Act–Assert** structure.
+- **Unit tests**: the bulk — pure functions in `src/lib` (masking, positions, each rule, the runner,
+  the parser wrapper).
 - **Positive & negative cases**: every lint rule has a test that it *fires* on bad SQL and *doesn't*
-  fire on good SQL — crucial for a linter (false positives are as bad as misses).
+  fire on good SQL. This is the most important testing idea in the project — a linter that
+  false-fires is worse than useless.
+- **Edge-case tests**: e.g. a keyword inside a string/comment must *not* trigger; CRLF is normalized;
+  invalid SQL still lints.
+- **Arrange–Act–Assert** structure.
 - **Coverage**: `npm run coverage` (v8 provider) over `src/lib`.
+- **`globals: true` + `setupFiles`**: `describe/it/expect` are global; `setup.ts` wires
+  `@testing-library/jest-dom` matchers.
 
 **Likely questions:**
-- *Unit vs integration?* One function in isolation vs multiple pieces together (here, real PGlite +
-  schema + queries).
-- *Why mock the DB in some tests but use the real one in others?* Mock → fast, deterministic logic
-  tests; real → confidence the actual SQL/DDL is valid. Both have their place.
-- *What makes a good linter test?* Both a true-positive and a true-negative per rule, plus edge cases
-  (a keyword inside a string/comment must *not* trigger).
+- *Why both a positive and a negative test per rule?* To catch misses *and* false positives — a
+  linter must do both.
+- *What is jsdom?* A JavaScript implementation of the DOM so component tests run in Node without a
+  real browser.
+- *Unit vs integration test?* Unit = one function in isolation; integration = multiple units
+  together. This project is almost entirely unit-tested because the core is pure.
 
-### 4.5 PGlite + PostgreSQL + WebAssembly
-
-**This is the showpiece — know it cold.**
-
-**What it is:** **PGlite** (`@electric-sql/pglite`) is PostgreSQL compiled to **WebAssembly (WASM)**,
-packaged as a library. It's a *complete* Postgres (the real query planner, executor, types,
-`generate_series`, `EXPLAIN ANALYZE`) running inside the browser's JS engine — no server, no network.
-
-**What is WebAssembly?** A portable binary instruction format that runs in the browser at
-near-native speed, letting languages like C/C++/Rust run on the web. Postgres is C, so it can be
-compiled to WASM and executed by the browser's WASM runtime.
-
-**Why I chose it:** It's the only way to make the benchmark *honest* — real Postgres means the cost
-model and the planner are genuine, so "add an index → median drops" is a true measurement, not a
-simulation. And it needs **no backend**.
-
-**Why not a hosted Postgres / a backend:** cost, infra, latency, and it would turn a self-contained
-tool into "a web app talking to a DB." **Why not sql.js (SQLite in WASM):** I specifically wanted
-Postgres's planner/statistics so index effects are realistic. **Why not an in-JS fake:** it would
-defeat the entire "real measurement" USP.
-
-**Key concepts / branches:**
-- **`generate_series(1, N)`** — a set-returning function used to seed 500K rows in one
-  `INSERT ... SELECT` without a client-side loop (see `db/schema.ts`).
-- **`ANALYZE` (the statistics command)** — refreshes the planner's table statistics. I run it after
-  seeding and after creating indexes so the planner makes good decisions. (Stale stats are a common
-  real-world cause of bad plans.)
-- **`EXPLAIN` vs `EXPLAIN ANALYZE`** — `EXPLAIN` shows the *estimated* plan; `ANALYZE` actually runs
-  the query and reports *actual* rows/time. (Good to know conceptually even though the UI focuses on
-  wall-clock timing.)
-- **Single-threaded WASM** — PGlite runs on one thread; that's why big scans are slower than a server
-  and why the benchmark is a *relative* before/after measurement, not an absolute benchmark.
-- **The `QueryExecutor` port** — `db/client.ts` wraps PGlite behind my interface so the rest of the
-  app (and tests) don't depend on PGlite directly.
-
-**Likely questions:**
-- *Is this really Postgres?* Yes — the actual Postgres C codebase compiled to WASM, not a rewrite.
-- *Where does the data live?* In the browser's memory (PGlite can also persist to IndexedDB; here
-  it's in-memory per session).
-- *Why slower than a normal Postgres?* Single-threaded, in a browser sandbox, no OS-level I/O
-  parallelism. The *ratios* (index speed-ups) still hold.
-- *What is WASM and why not just JS?* A compiled binary format that's faster and lets existing C/C++
-  (like Postgres) run in the browser; you couldn't realistically rewrite Postgres in JS.
-
-### 4.6 node-sql-parser
+### 4.5 node-sql-parser
 
 **What it is:** A JavaScript SQL parser that turns SQL text into an **AST (Abstract Syntax Tree)** and
 supports multiple dialects (PostgreSQL, MySQL, T-SQL/`transactsql`, SQLite, etc.).
@@ -383,19 +314,22 @@ incomplete. **Why not regex alone:** regex can't understand nested structure rel
 
 **Key concepts / branches:**
 - **AST (Abstract Syntax Tree)** — a tree representation of code structure (SELECT with columns,
-  FROM, WHERE sub-trees). A classic interview topic.
+  FROM, WHERE sub-trees). A classic interview topic; know what it is and that compilers, linters, and
+  formatters all use ASTs.
 - **Lexer/parser basics** — tokenize text, then build a tree per a grammar.
 - **Hybrid approach (important nuance)** — I *don't* rely solely on the AST. Parsers fail on edge
-  cases, so my linter is **text-driven with AST as a bonus**: it still lints SQL that doesn't fully
-  parse. `parser/parse.ts` captures the error instead of throwing. This is a deliberate robustness
-  decision.
+  cases and dialect quirks, so my linter is **text-driven with the AST as a bonus**: it still lints
+  SQL that doesn't fully parse. `parser/parse.ts` captures the error instead of throwing, and
+  `analyzeSql` reports it as a warning while still returning findings.
 
 **Likely questions:**
-- *What's an AST?* A structured tree of parsed code; compilers/linters/formatters use them.
+- *What's an AST?* A structured tree of parsed code; used by compilers/linters/formatters.
 - *Why not use the AST for every rule?* Parsers break on real-world SQL; a text-first scanner with
   string/comment masking is more robust for a linter. (A great "I made a trade-off" answer.)
+- *How do you support four dialects?* `node-sql-parser` takes a `database` option; I pass the user's
+  selected dialect, and the editor highlights with the matching CodeMirror SQL dialect.
 
-### 4.7 CodeMirror 6
+### 4.6 CodeMirror 6
 
 **What it is:** A modern, extensible code-editor component (syntax highlighting, selection, line
 numbers). I use `@uiw/react-codemirror` (React wrapper) + `@codemirror/lang-sql`.
@@ -411,7 +345,7 @@ language support that's *dialect-aware*, and easy to theme to the design system.
   `sql({ dialect })`, a custom theme, and `EditorView.lineWrapping`.
 - **Dialect mapping**: my `Dialect` union maps to CodeMirror's SQL dialects
   (`PostgreSQL/MySQL/MSSQL/SQLite`) in `editorTheme.ts`.
-- **Theming**: `EditorView.theme()` for chrome + a `HighlightStyle` mapping Lezer syntax *tags*
+- **Theming**: `EditorView.theme()` for the chrome + a `HighlightStyle` mapping Lezer syntax *tags*
   (keyword/string/number/comment) to Solarized colors.
 - **Lezer**: CodeMirror's incremental parser; `@lezer/highlight` provides the tags I style.
 - **Controlled component**: value + `onChange` wired to React state so edits re-trigger linting.
@@ -421,7 +355,7 @@ language support that's *dialect-aware*, and easy to theme to the design system.
 - *How does syntax highlighting work?* The language parser (Lezer) tags tokens; a highlight style
   maps tags to colors.
 
-### 4.8 Supporting libraries
+### 4.7 Supporting libraries
 
 - **Fontsource** (`@fontsource/*`) — self-hosts the fonts (Anton, Space Grotesk, JetBrains Mono) as
   npm packages so the app works **offline** and doesn't depend on Google Fonts' CDN (privacy +
@@ -461,14 +395,19 @@ Examples (bad → good):
 | `WHERE user_id = '42'` (string vs int) | `WHERE user_id = 42` |
 | `WHERE UPPER(email) = 'A@B.COM'` | store/compare lowercase, or a functional index |
 
-**Index types to know:**
+**Index types to know (interviewers love these):**
 - **B-tree** — default; equality + range + sorting + prefix.
 - **Composite (multi-column)** — e.g. `(user_id, status)`; follows the **leftmost-prefix rule** (can
   use it for `user_id` alone or `user_id + status`, but not `status` alone).
 - **Covering / index-only scan** — if the index contains *all* columns the query needs, the DB never
   touches the table. (This is why `SELECT *` is flagged — it defeats covering indexes.)
-- **Unique index** — enforces uniqueness + speeds equality lookups (I use one on `users.email`).
+- **Unique index** — enforces uniqueness + speeds equality lookups.
 - **GIN / trigram (pg_trgm)** — the real fix for leading-wildcard / `%contains%` search.
+
+**`EXPLAIN` (good background knowledge):** every database has `EXPLAIN` (and `EXPLAIN ANALYZE`) to show
+the *execution plan* — the tree of scans/joins/sorts the planner chose. A **sequential scan** on a
+big table where an **index scan** was possible is the visible symptom of the non-sargable predicates
+this tool catches *before* you ever run the query.
 
 ### 5.2 The 19 anti-pattern rules (with examples)
 
@@ -521,48 +460,37 @@ fix.
 18. **missing-where-dml** (critical) — `UPDATE`/`DELETE` with no `WHERE` hits every row.
 19. **equals-null** (medium) — `= NULL` is always UNKNOWN (3-valued logic); use `IS NULL`.
 
-**The clever implementation detail to mention:** rules scan a **masked** copy of the SQL where the
-*contents* of string literals and comments are blanked out (but length preserved, so positions stay
-exact). That's why `WHERE name = 'DELETE FROM x'` doesn't trigger the DELETE rule — the keyword is
-inside a string. See `context.ts` (`maskSql`) and `scan.ts`.
+### 5.3 How the detection actually works
 
-### 5.3 EXPLAIN, ANALYZE & the benchmark methodology
+This is the part that shows real engineering — be ready to explain it.
 
-**`EXPLAIN`** asks the database to show the query execution plan (scans, joins, sorts) with estimated
-cost/rows; **`EXPLAIN ANALYZE`** actually runs it and adds actual rows/time. **`ANALYZE`** (a separate
-command) refreshes the planner's statistics — I run it after seeding and after indexing so the
-planner chooses good plans.
+1. **Masking (`context.ts` → `maskSql`)**: before scanning, the SQL is copied into a **masked**
+   version where the *contents* of string literals (`'...'`), quoted identifiers (`"..."`,
+   backticks), and comments (`-- …`, `/* … */`, `#` for MySQL) are replaced with spaces — **but
+   newlines and total length are preserved**. A parallel boolean `codeMask[]` marks which characters
+   are "real code."
+   - **Why:** so a rule scanning for the keyword `DELETE` never fires on `WHERE note = 'DELETE me'`.
+     The keyword is inside a string, which is blanked in the masked copy.
+   - **Why length-preserving:** every match index in the masked string maps 1:1 to the same index in
+     the raw string, so reported line/column positions are exact. When a rule needs the *literal's
+     contents* (e.g. to check if a `LIKE` pattern starts with `%`), it reads from the **raw** string
+     at that index.
 
-**The benchmark (`src/lib/benchmark/runner.ts`) — goal:** prove, with measured numbers, that the
-suggested indexes help.
+2. **Scanning (`scan.ts`)**: helpers run regexes over the masked text and expose where the `WHERE` /
+   `ON` clauses are, so rules can restrict themselves to the relevant part of the query.
 
-**Method:**
-1. **Drop** all suggested indexes → the "before" baseline (forces sequential scans).
-2. Run each of the **30 queries** (`benchmark/queries.ts`), timing each; repeat 3× and keep the
-   **best (min)** time per query (minimizes noise from GC/JIT).
-3. **Create** the 8 suggested indexes (`db/indexes.ts`) + `ANALYZE`.
-4. Run the 30 queries again → the "after" time.
-5. Report **median before**, **median after**, and **median speed-up** per query and overall.
+3. **Rules (`rules/*.ts`)**: each rule's `detect(ctx)` returns `Detection[]` — `{ index, length,
+   message, … }` pointing into the raw SQL.
 
-**Why median, not mean?** Median is robust to outliers (one GC pause won't skew it); means get
-dragged by tails. There's also a `percentile()` helper for p95-style stats.
+4. **Runner (`analyze.ts`)**: converts each `Detection` to a line/column (via `positionAt`), merges in
+   the rule's metadata (title, severity, category, explanation, fix), sorts by position, and
+   de-duplicates. Output: `AnalysisResult { findings[], counts, parseError }`.
 
-**Why "best of 3" per query?** The *minimum* is the cleanest estimate of true cost — background noise
-can only make a run *slower*, never faster, so the fastest run is closest to the real work.
-
-**What the numbers show:** point-lookups (e.g. "orders for one user") go from a full scan of 500K
-rows to an index seek — often **50–100×+** faster. Some *aggregate* queries (e.g. "revenue by
-category" over all rows) barely change, because they must read everything regardless — **and I kept
-those in on purpose**: an honest benchmark with mixed results is more credible than an all-wins chart.
-
-**Honesty note for a résumé line like "1.2 s → 25 ms":** the app measures *live*, so exact numbers
-depend on the machine and dataset size. On a 100K run I measured ~25 ms → ~1.2 ms median (≈7× median,
-100×+ on point lookups); on 500K the "before" times are larger. The *method* is what matters and is
-fully reproducible.
-
-**Analogy to other stacks:** this is the same idea as benchmarking any code — establish a baseline,
-change one variable (add indexes), re-measure, report the delta with a robust statistic. It's A/B
-testing for database performance.
+**The bug I hit and fixed (great story):** my `LIKE` rules originally matched on the masked text and
+then tried to read the string literal — but masking had *blanked* the literal, so leading-wildcard
+`LIKE` never fired. Fix: locate the `LIKE` keyword on the masked text (so comments are ignored), then
+read the following literal from the **raw** text. It's the perfect illustration of *why* the
+masked/raw split exists.
 
 ---
 
@@ -572,116 +500,81 @@ testing for database performance.
 | File | Purpose |
 | --- | --- |
 | `package.json` | Dependencies + scripts (`dev`, `build`, `test`, `typecheck`, `coverage`). |
-| `vite.config.ts` | Build config: React plugin, `@` path alias, **PGlite excluded** from pre-bundle, **manualChunks** vendor splitting. |
+| `vite.config.ts` | Build config: React plugin, `@` path alias, **manualChunks** vendor splitting. |
 | `vitest.config.ts` | Test config: jsdom env, globals, setup file, coverage of `src/lib`. |
 | `tsconfig*.json` | TypeScript config (app vs node) in strict mode. |
 | `index.html` | SPA entry; loads `src/main.tsx`. |
 | `README.md` / `CLAUDE.md` | Project overview / contributor guide. |
 
-### Entry & shell
+### Entry, shell & styles
 | File | Purpose |
 | --- | --- |
 | `src/main.tsx` | React root; imports fonts + all CSS; renders `<App>`. |
-| `src/App.tsx` | App shell: header, two-tab nav, **lazy-loads** the Benchmark view, footer, decorations. |
-| `src/vite-env.d.ts` | Ambient types for Vite (CSS/asset imports). |
-
-### Styles (design system)
-| File | Purpose |
-| --- | --- |
-| `src/styles/tokens.css` | **All color/spacing/typography tokens** (Solarized palette) as CSS variables. |
-| `src/styles/global.css` | Base/reset, body canvas + grid, shared primitives. |
-| `src/styles/components.css` | Buttons, pills, badges, selects, segmented control. |
-| `src/styles/app.css` | Layout: header, main grid, cards, metrics, footer. |
-| `src/styles/features.css` | Finding cards, benchmark bars, progress, grids. |
-
-### UI components
-| File | Purpose |
-| --- | --- |
+| `src/App.tsx` | App shell: header, the Analyzer view, footer, decorations. |
+| `src/styles/tokens.css` | **All color/spacing/typography tokens** (Solarized) as CSS variables. |
+| `src/styles/{global,components,app,features}.css` | Base, primitives, layout, finding cards. |
 | `src/components/ui/primitives.tsx` | Reusable `Button`, `Badge`, `Card`, `Select`, `Segmented`. |
 | `src/components/Decor.tsx` | Decorative SVG Memphis shapes (bolt, star, blob). |
 
 ### Core logic — `src/lib/` (no React; this is where the tests are)
-
-**analyzer/** (the linter)
 | File | Purpose |
 | --- | --- |
-| `types.ts` | `Dialect`, `Severity`, `Category`, `Finding`, `Rule`, `SqlContext` contracts. |
-| `context.ts` | `buildContext()` + **`maskSql()`** (blank strings/comments) + position math. |
-| `scan.ts` | Scanning helpers: regex over masked text, WHERE/ON clause detection. |
-| `rules/*.ts` | The 19 rules, grouped by category. |
-| `rules/index.ts` | `ALL_RULES` registry + `RULES_BY_ID`. |
-| `analyze.ts` | `analyzeSql()` — runs rules, resolves positions, sorts, dedupes, counts. |
+| `analyzer/types.ts` | `Dialect`, `Severity`, `Category`, `Finding`, `Rule`, `SqlContext` contracts. |
+| `analyzer/context.ts` | `buildContext()` + **`maskSql()`** (blank strings/comments) + position math. |
+| `analyzer/scan.ts` | Scanning helpers: regex over masked text, WHERE/ON clause detection. |
+| `analyzer/rules/*.ts` | The 19 rules, grouped by category. |
+| `analyzer/rules/index.ts` | `ALL_RULES` registry + `RULES_BY_ID`. |
+| `analyzer/analyze.ts` | `analyzeSql()` — runs rules, resolves positions, sorts, dedupes, counts. |
+| `parser/parse.ts` | Wraps `node-sql-parser`; returns AST **or a captured error** (never throws). |
 
-**parser/**
+### Feature view — `src/features/analyzer/`
 | File | Purpose |
 | --- | --- |
-| `parse.ts` | Wraps `node-sql-parser`; returns AST **or a captured error** (never throws). |
-
-**db/** (PGlite + dataset)
-| File | Purpose |
-| --- | --- |
-| `types.ts` | `QueryExecutor` **port** interface + result types. |
-| `schema.ts` | DDL + `seedDatabase()` via `generate_series` (users/products/orders). |
-| `indexes.ts` | The 8 `SUGGESTED_INDEXES` + create/drop helpers. |
-| `client.ts` | `PgliteExecutor` — real PGlite adapter; `run`, `exec`, `rowCount`. |
-
-**benchmark/**
-| File | Purpose |
-| --- | --- |
-| `queries.ts` | The 30 benchmark queries (grouped by access pattern). |
-| `runner.ts` | Pure stats (`median`, `percentile`) + `runBenchmark()` orchestration. |
-
-### Feature views — `src/features/`
-| File | Purpose |
-| --- | --- |
-| `analyzer/AnalyzerView.tsx` | Editor + dialect picker + live findings + rule catalog. |
-| `analyzer/SqlEditor.tsx` | CodeMirror wrapper (dialect-aware, themed). |
-| `analyzer/editorTheme.ts` | Solarized CodeMirror theme + dialect mapping. |
-| `analyzer/FindingCard.tsx` | Expandable finding (why / how-to-fix). |
-| `analyzer/examples.ts` | Demo SQL snippets. |
-| `benchmark/BenchmarkView.tsx` | Boot/seed UI (PGlite lifecycle) + row-count metrics. |
-| `benchmark/useDatabase.ts` | Custom hook: PGlite lifecycle (status/progress/init). |
-| `benchmark/BenchmarkPanel.tsx` | Runs the benchmark, renders before/after bars. |
+| `AnalyzerView.tsx` | Editor + dialect picker + live findings + severity filters + rule catalog. |
+| `SqlEditor.tsx` | CodeMirror wrapper (dialect-aware, themed). |
+| `editorTheme.ts` | Solarized CodeMirror theme + dialect mapping. |
+| `FindingCard.tsx` | Expandable finding (why / how-to-fix). |
+| `examples.ts` | Demo SQL snippets for the "Load example" menu. |
 
 ### How they link (one sentence)
-`main.tsx` → `App.tsx` mounts one of two **views** (`features/`), each of which calls into the
-framework-agnostic **core** (`lib/`); the Analyzer uses `analyzer/` + `parser/`, and the Benchmark
-uses `db/` (PGlite) + `benchmark/`.
+`main.tsx` → `App.tsx` renders `AnalyzerView`, which calls `analyzeSql()` in `src/lib/analyzer` (which
+uses `context` → `parser` + `scan` + `rules`) and renders the returned findings as cards.
 
 ---
 
 ## 7. Rapid-fire interview Q&A
 
-**"Walk me through the project."** → Use the 2-minute pitch (§1), then offer to deep-dive either tool.
+**"Walk me through the project."** → Use the 2-minute pitch (§1), then offer to deep-dive the masking
+mechanism or a specific rule.
 
-**"What was the hardest part?"** → Making the linter robust to SQL that doesn't fully parse — the
-string/comment **masking** trick (scan structure on a masked copy, read literals from the raw text),
-and getting an *honest* benchmark out of a single-threaded WASM Postgres (best-of-3, medians).
+**"What was the hardest part?"** → Making detection robust: the string/comment **masking** pass (scan
+structure on a masked copy, read literals from the raw text) so keywords inside strings/comments never
+false-fire, while keeping source positions exact.
 
-**"What's a bug you hit?"** → My regex rules initially scanned the *masked* text but then tried to
-read a string literal (which masking had blanked), so leading-wildcard `LIKE` never fired — I fixed it
-by locating the keyword on masked text but reading the literal from the raw text.
+**"What's a bug you hit?"** → The `LIKE` rules scanned masked text but needed the literal, which
+masking had blanked — leading-wildcard `LIKE` never fired. Fixed by locating the keyword on masked
+text and reading the literal from raw text. (§5.3)
 
-**"Why no backend?"** → It's a developer tool; client-side gives zero infra, privacy, offline use,
-and — crucially — PGlite makes a real database available without one. (§3.4)
+**"Why client-side / no backend?"** → It's a linter — pure input→output. Client-side gives privacy,
+offline use, zero infra, and trivial deployment.
 
-**"How do you test something with a database?"** → Two layers: a `MockExecutor` for fast deterministic
-logic tests, and a real-PGlite integration test on a small dataset for confidence the SQL is valid.
+**"How would you add a new rule?"** → Implement a `Rule` with `detect(ctx)` returning `Detection[]`,
+register it in `rules/index.ts`, add a positive + negative test. The architecture is built for this.
 
-**"How would you add a new lint rule?"** → Implement a `Rule` with a `detect(ctx)` returning
-`Detection[]`, register it in `rules/index.ts`, add a positive + negative test. The architecture is
-built for this.
+**"How do you avoid false positives?"** → The masking pass (no matches inside strings/comments),
+scoping rules to the right clause, and a required negative test per rule.
 
-**"Is it hard / did you really build it?"** → It's breadth over raw difficulty: the engines (Postgres,
-CodeMirror) are mature libraries I integrated; the custom work (heuristic linter, benchmark harness)
-is algorithmic and fully explained above. Everything is real and measured.
+**"Is it hard / did you really build it?"** → The value is algorithmic: a rules engine, a
+length-preserving masking pass, exact position tracking, and multi-dialect parsing. Mature libraries
+(node-sql-parser, CodeMirror) handle parsing/editing; the detection logic is mine and fully tested.
 
-**Core CS one-liners** (be ready):
-- *Time complexity of an index lookup?* O(log n) for a B-tree. *Full scan?* O(n).
-- *Why is `LIKE '%x'` slow but `'x%'` fast?* B-trees are sorted by prefix; a leading wildcard has no
-  prefix to seek.
+**Core SQL one-liners** (be ready):
+- *Index lookup complexity?* O(log n) for a B-tree. *Full scan?* O(n).
+- *Why is `LIKE '%x'` slow but `'x%'` fast?* B-trees sort by prefix; a leading wildcard has no prefix
+  to seek.
 - *Cartesian product size?* rows(a) × rows(b).
 - *3-valued logic?* SQL booleans are TRUE/FALSE/**UNKNOWN**; comparisons with `NULL` yield UNKNOWN.
+- *What does `EXPLAIN` show?* The planner's execution plan (scans/joins/sorts) with cost estimates.
 
 ---
 
@@ -690,18 +583,16 @@ is algorithmic and fully explained above. Everything is real and measured.
 Mentioning these *unprompted* is a strong senior signal — it shows judgment, not insecurity.
 
 - **The linter is heuristic, not a full semantic analyzer.** It uses text scanning + a best-effort
-  AST, so it can have occasional false positives/negatives (e.g. it doesn't know which columns are
-  actually indexed). A deeper version would read the real schema. *Trade-off: robustness over
-  precision.*
-- **PGlite is single-threaded**, so absolute timings aren't server-grade; the benchmark is a
-  *relative* before/after measurement (which is what matters).
-- **First-load payload is large** (~3 MB gzipped for the WASM Postgres). Mitigated by lazy-loading
-  the Benchmark tab.
-- **The benchmark runs a fixed query suite**, not the user's own pasted query. A natural next step is
-  to benchmark the *analyzed* query directly (run it, apply the suggested index, re-run, show the
-  delta) — tying the two tools together.
-- **No persistence**: the in-browser DB resets on refresh. PGlite supports IndexedDB persistence,
-  which I'd add next along with saved queries.
+  AST, so it can have occasional false positives/negatives — e.g. it doesn't know which columns are
+  *actually* indexed, so it flags patterns that *could* be slow, not ones it's proven are. A deeper
+  version would read the real schema. *Trade-off: robustness/generality over precision.*
+- **Rules are pattern-based**, so unusual-but-equivalent SQL phrasings can slip through. Moving more
+  rules onto the AST (where it parses) would tighten precision.
+- **No auto-fix yet** — findings explain the fix in prose but don't rewrite the query. An auto-fix
+  (e.g. turn `NOT IN (subquery)` into `NOT EXISTS`) is the natural next feature.
+- **Next features I'd build:** schema-aware suggestions (read `CREATE TABLE` to know real indexes),
+  one-click auto-fix, shareable permalinks, and a VS Code extension (the core `lib/` already has no
+  browser dependency, so it would drop in).
 
 ---
 

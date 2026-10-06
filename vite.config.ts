@@ -2,20 +2,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
 
-// PGlite ships a WebAssembly build of Postgres; it must be excluded from
-// Vite's dependency pre-bundling so the .wasm/.data assets resolve correctly.
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
-  },
-  optimizeDeps: {
-    exclude: ["@electric-sql/pglite"],
-  },
-  worker: {
-    format: "es",
   },
   build: {
     chunkSizeWarningLimit: 900,
